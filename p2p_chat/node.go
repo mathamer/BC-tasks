@@ -2,33 +2,38 @@ package main
 
 import (
 	"context"
+
+	mapset "github.com/deckarep/golang-set"
 	"github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p-core/network"
 )
 
 var nLogger = log.Logger("node")
 
-
 type Node struct {
 	*Config
 	context.Context
 
-	discovery   *discovery
+	discovery *discovery
 
-	inputStream chan string
+	inputStream  chan string
 	outputStream chan *Message
 
-	peers 		*peerSet
+	peers *peerSet
 
+	knownMsg mapset.Set
+	counter  int
 }
 
 func NewNode(c *Config, inputStream chan string, outputStream chan *Message) *Node {
-	n := &Node {
-		Config:  		c,
-		Context: 		context.Background(),
-		inputStream:	inputStream,
-		outputStream:	outputStream,
-		peers:			newPeerSet(),
+	n := &Node{
+		Config:       c,
+		Context:      context.Background(),
+		inputStream:  inputStream,
+		outputStream: outputStream,
+		peers:        newPeerSet(),
+		knownMsg:     mapset.NewSet(),
+		counter:      1,
 	}
 
 	n.discovery = NewDiscovery(n, n.Config)
@@ -36,11 +41,20 @@ func NewNode(c *Config, inputStream chan string, outputStream chan *Message) *No
 	return n
 }
 
+func (n *Node) markAsKnown(m *Message) bool {
+	known := n.knownMsg.Contains(m.Hash())
+	if !known {
+		n.knownMsg.Add(m.Hash())
+	}
 
+	return known
+}
 
-func (n *Node) handleNewPeer(stream network.Stream)  {
+func (n *Node) handleNewPeer(stream network.Stream) {
 
 	if n.peers.Len() < n.MaxPeers {
+
+		nLogger.Info("Found new peer ", stream.Conn().RemotePeer())
 
 		peer := NewPeer(stream)
 		err := n.peers.Register(peer)
@@ -56,11 +70,9 @@ func (n *Node) handleNewPeer(stream network.Stream)  {
 		stream.Close()
 	}
 
-
-
 }
 
-func (n *Node) readData(peer *Peer)  {
+func (n *Node) readData(peer *Peer) {
 	rw := peer.rw
 	for {
 		m, err := Deserialize(rw)
@@ -70,40 +82,48 @@ func (n *Node) readData(peer *Peer)  {
 			return
 		}
 
+		peer.MarkMessage(m.Hash())
+
+		if !n.markAsKnown(m) {
+			// only send to output channel if we haven't seen this message
+			n.sendToOutput(m)
+		}
+
 		n.Broadcast(m)
 	}
 }
 
-func (n *Node) startDiscovery()  {
+func (n *Node) startDiscovery() {
 	n.discovery.Start(n.handleNewPeer)
 }
 
-
-func (n *Node) Start()  {
+func (n *Node) Start() {
 	go n.startDiscovery()
 	go n.writeMessages()
 }
 
-func (n *Node) writeMessages()  {
+func (n *Node) writeMessages() {
 
 	for {
 		data := n.readFromInput()
 
-
-		m := &Message {
+		m := &Message{
 			Sender: n.NodeName,
-			Msg:	data,
+			Msg:    data,
+			//Nonce:  n.counter,
 		}
+		n.counter += 1
 
 		go n.Broadcast(m)
 	}
 
 }
 
-func (n *Node) Broadcast(m *Message)  {
+func (n *Node) Broadcast(m *Message) {
 
 	data := m.Serialize()
-	for _, peer := range n.peers.peers {
+	mHash := m.Hash()
+	for _, peer := range n.peers.PeersWithoutMsg(m.Hash()) {
 		rw := peer.rw
 		_, err := rw.Write(data)
 
@@ -117,14 +137,16 @@ func (n *Node) Broadcast(m *Message)  {
 			// but still send to other peers
 			continue
 		}
+
+		peer.MarkMessage(mHash)
 	}
 
 }
 
 func (n *Node) readFromInput() string {
-	return <- n.inputStream
+	return <-n.inputStream
 }
 
-func (n *Node) sendToOutput(m *Message)  {
+func (n *Node) sendToOutput(m *Message) {
 	n.outputStream <- m
 }

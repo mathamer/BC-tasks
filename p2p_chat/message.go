@@ -10,7 +10,6 @@ import (
 type Message struct {
 	Sender  string
 	Msg 	string
-	Nonce   int
 }
 
 func (m *Message) Hash() Hash {

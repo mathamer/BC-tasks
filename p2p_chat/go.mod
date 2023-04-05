@@ -3,7 +3,6 @@ module p2p-chat
 go 1.15
 
 require (
-	//gioui.org v0.0.0-20191103120614-2bee95358a8b
 	github.com/deckarep/golang-set v1.7.1
 	github.com/ipfs/go-log v0.0.1
 	github.com/libp2p/go-libp2p v0.4.0
