@@ -44,7 +44,7 @@ func (t *Transaction) TxHash() Hash {
 	return ValuesHash(t.From[:], t.To[:], []byte(fmt.Sprintf("%d", t.Amount))[:])
 }
 
-func (t *Transaction) Sign(key ecdsa.PrivateKey) {
+func (t *Transaction) Sign(key ecdsa.PrivateKey, keyp ecdsa.PublicKey) {
 	txHash := t.TxHash()
 	r, s, err := ecdsa.Sign(rand.Reader, &key, txHash[:])
 	if err != nil {
@@ -52,12 +52,12 @@ func (t *Transaction) Sign(key ecdsa.PrivateKey) {
 	}
 	signature := append(r.Bytes()[:32], s.Bytes()[:32]...)
 
-	r2, s2, err2 := ecdsa.Sign(rand.Reader, &key, signature)
-	if err2 != nil {
-		panic(err2)
-	}
-	signature = append(signature, r2.Bytes()[:32]...)
-	signature = append(signature, s2.Bytes()[:32]...)
+	// r2, s2, err2 := ecdsa.Sign(rand.Reader, &key, signature)
+	// if err2 != nil {
+	// 	panic(err2)
+	// }
+	// signature = append(signature, r2.Bytes()[:32]...)
+	// signature = append(signature, s2.Bytes()[:32]...)
 
 	t.Signature = signature
 }
@@ -91,7 +91,7 @@ func main() {
 	}
 	pubKey := privateKey.PublicKey
 
-	tx.Sign(*privateKey)
+	tx.Sign(*privateKey, pubKey)
 
 	fmt.Println("Valid? ", tx.Verify(pubKey))
 }
