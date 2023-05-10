@@ -11,7 +11,7 @@ Kolegij:
 **[Blockchain aplikacije](https://fipu.unipu.hr/fipu/predmet/bcinf)**
 
 Note:
-Ovo je repozitorij sa zadacima iz kolegija Blockchain aplikacije. Korišteni programski jezici su **Solidity** i **Go**. Pritom za izradu zadataka korišten je **Visual Studio Code** editor i **Remix** online editor.
+Repozitorij sa zadacima iz kolegija Blockchain aplikacije. Korišteni programski jezici su **Solidity**, **Go** i **Javascript**. Pritom za izradu zadataka korišten je **Visual Studio Code** editor i **Remix** online editor.
 
 Ak.god. **2022/23**  
 Nositelj: doc. dr. sc. **[Nikola Tanković](https://www.notion.so/Kontakt-stranica-875574d1b92248b1a8e90dae52cd29a9)**  
